@@ -9,6 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
+import javax.crypto.SecretKey;
 import java.security.Key;
 import java.util.Date;
 import java.util.HashMap;
@@ -19,7 +20,7 @@ import java.util.Map;
 @Slf4j
 public class JwtService {
 
-    private static final String SECRET_KEY = "089d6c4b9c023c87ed66229a7a6b4751222f317b4d5d66b2";
+    private static final String SECRET_KEY = "secsdfsdfsdfsdfsdfsdfsdfsdfsdfsdfsdfsdfsdfsdfsdfsdfsdfsdfsdf";
 
     public String extractUsername(String token) {
         log.info("Entering JwtService - extractUsername()");
@@ -68,7 +69,7 @@ public class JwtService {
                 .setClaims(extraClaims)
                 .setSubject(userDetails.getUsername())
                 .setIssuedAt(new Date(System.currentTimeMillis()))
-                .setExpiration(new Date(System.currentTimeMillis() + 1000 * 60 * 24))
+                .setExpiration(new Date(System.currentTimeMillis() + 1000 * 60 * 60 * 24))
                 .signWith(getSigningKey(), SignatureAlgorithm.HS256)
                 .compact();
         log.info("Leaving JwtService - generateToken()");
@@ -93,7 +94,7 @@ public class JwtService {
     private Date extractExpiration(String token) {
         log.info("Entering JwtService - extractExpiration()");
         Date date = extractExpirationDateClaim(token);
-        log.info("Entering JwtService - extractExpiration()");
+        log.info("Leaving JwtService - extractExpiration()");
         return date;
     }
 
@@ -121,6 +122,8 @@ public class JwtService {
     private Key getSigningKey() {
         log.info("Entering JwtService - getSigningKey()");
         byte[] keyBytes = Decoders.BASE64.decode(SECRET_KEY);
-        return Keys.hmacShaKeyFor(keyBytes);
+        SecretKey secretKey = Keys.hmacShaKeyFor(keyBytes);
+        log.info("Leaving JwtService - getSigningKey()");
+        return secretKey;
     }
 }

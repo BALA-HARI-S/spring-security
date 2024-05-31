@@ -39,7 +39,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         // Check whether the REQUEST has JWT TOKEN
         // Retrieved Authentication Header
         final String authHeader = request.getHeader("Authorization");
-        log.info("auth Header: {}", authHeader);
+        log.info("doFilterInternal() auth Header: {}", authHeader);
 
         // Retrieved Bearer/Access Token form the Authentication Header
         final String jwt;
@@ -47,35 +47,36 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         if (Objects.isNull(authHeader) || !authHeader.startsWith("Bearer ")){
             filterChain.doFilter(request, response);
-            return;
-        }
+        } else {
+            // Retrieve Bearer/Access Token
+            jwt = authHeader.substring(7);
+            log.info("doFilterInternal() JWT from auth Header: {}", jwt);
 
-        // Retrieve Bearer/Access Token
-        jwt = authHeader.substring(7);
-        log.info("JWT from auth Header: {}", jwt);
+            // After checking the jwt token, We need to call the UserDetailService to check whether the USER
+            // already within the database or not. But to do that need to call a JWT Service to extract the USERNAME
+            userEmail = jwtService.extractUsername(jwt);
 
-        // After checking the jwt token, We need to call the UserDetailService to check whether the USER
-        // already within the database or not. But to do that need to call a JWT Service to extract the USERNAME
-        userEmail = jwtService.extractUsername(jwt);
+            // Check whether the USER was Authenticated or Not
+            // If we have USER but Not Authenticate the user
+            if (!Objects.isNull(userEmail) && Objects.isNull(SecurityContextHolder.getContext().getAuthentication())) {
+                UserDetails userDetails = this.userDetailsService.loadUserByUsername(userEmail);
+                // check if TOKEN is still valid
+                if (jwtService.isTokenValid(jwt, userDetails)){
+                    // If Valid - UPDATE SecurityContext
+                    // Need this TYPE:OBJECT to UPDATE the Security Context
+                    UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
+                            userDetails.getUsername(),
+                            null,
+                            userDetails.getAuthorities()
+                    );
+                    authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
-        // Check whether the USER was Authenticated or Not
-        // If we have USER but Not Authenticate the user
-        if (!Objects.isNull(userEmail) && Objects.isNull(SecurityContextHolder.getContext().getAuthentication())) {
-            UserDetails userDetails = this.userDetailsService.loadUserByUsername(userEmail);
-            // check if TOKEN is still valid
-            if (jwtService.isTokenValid(jwt, userDetails)){
-                // If Valid - UPDATE SecurityContext
-                // Need this TYPE:OBJECT to UPDATE the Security Context
-                UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                        userDetails,
-                        null,
-                        userDetails.getAuthorities()
-                );
-                authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                SecurityContextHolder.getContext().setAuthentication(authToken);
+                    System.out.println("authToken = " + authToken);
+                    SecurityContextHolder.getContext().setAuthentication(authToken);
+                }
             }
+            filterChain.doFilter(request, response);
         }
-        filterChain.doFilter(request, response);
         log.info("Leaving JwtAuthenticationFilter doFilterInternal()");
     }
 }
